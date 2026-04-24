@@ -1,30 +1,33 @@
 import OpenAI from "openai";
 
-export const runtime = "nodejs"; // wajib untuk Vercel
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+export const runtime = "nodejs";
 
 /* =========================
-   🔹 GET (OPTIONAL TEST)
+   GET (OPTIONAL)
 ========================= */
 export async function GET() {
   return Response.json({
     status: "OK",
-    message: "API summary aktif. Gunakan POST untuk AI.",
+    message: "API ready. Use POST.",
   });
 }
 
 /* =========================
-   🔹 POST (MAIN AI LOGIC)
+   POST (AI)
 ========================= */
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const titles: string[] = body.titles;
+    // 🔥 pindahkan ke sini (bukan di atas)
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
 
-    // VALIDASI
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error("OPENAI_API_KEY not set");
+    }
+
+    const { titles } = await req.json();
+
     if (!titles || titles.length === 0) {
       return Response.json(
         { error: "No titles provided" },
@@ -33,68 +36,32 @@ export async function POST(req: Request) {
     }
 
     console.log("✅ OPENAI CALLED");
-    console.log("Titles:", titles);
 
-    /* =========================
-       🔹 PROMPT AI
-    ========================= */
     const prompt = `
-You are a professional crypto market analyst.
+You are a crypto analyst.
 
-Analyze the sentiment of the following crypto news headlines:
-
+Analyze these headlines:
 ${titles.join("\n")}
 
-Rules:
-- Maximum 2 sentences
-- Mention sentiment: bullish / bearish / neutral
-- Keep it concise and clear
-- No emojis
+Give short summary (max 2 sentences) + sentiment.
 `;
 
-    /* =========================
-       🔹 CALL OPENAI
-    ========================= */
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
-      messages: [
-        {
-          role: "user",
-          content: prompt,
-        },
-      ],
+      messages: [{ role: "user", content: prompt }],
     });
 
-    const result = completion.choices[0]?.message?.content;
+    const text = completion.choices[0]?.message?.content;
 
-    // VALIDASI HASIL
-    if (!result) {
-      console.error("❌ EMPTY RESPONSE FROM AI");
-      return Response.json(
-        { error: "Empty AI response" },
-        { status: 500 }
-      );
-    }
-
-    /* =========================
-       🔹 RESPONSE SUCCESS
-    ========================= */
-    return Response.json({
-      success: true,
-      summary: result,
-    });
+    return Response.json({ summary: text });
 
   } catch (err: any) {
-    console.error("❌ OPENAI ERROR:", err?.message || err);
+    console.error("❌ ERROR:", err.message);
 
-    /* =========================
-       🔹 ERROR RESPONSE (JELAS)
-    ========================= */
     return Response.json(
       {
-        success: false,
         error: "AI FAILED",
-        detail: err?.message || "Unknown error",
+        detail: err.message,
       },
       { status: 500 }
     );
