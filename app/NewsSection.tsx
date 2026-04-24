@@ -21,20 +21,36 @@ function getTag(title: string) {
    🔹 FALLBACK IMAGE
 ========================= */
 function getFallbackImage(source: string) {
-  if (source === "CoinDesk")
-    return "https://static.coindesk.com/wp-content/uploads/2021/03/coindesk-og-image.jpg";
+  const map: any = {
+    CoinDesk:
+      "https://static.coindesk.com/wp-content/uploads/2021/03/coindesk-og-image.jpg",
+    CoinTelegraph:
+      "https://cointelegraph.com/assets/img/ct-logo.png",
+    Decrypt:
+      "https://decrypt.co/static/img/decrypt-logo.png",
+  };
 
-  if (source === "CoinTelegraph")
-    return "https://cointelegraph.com/assets/img/ct-logo.png";
-
-  if (source === "Decrypt")
-    return "https://decrypt.co/static/img/decrypt-logo.png";
-
-  return "https://via.placeholder.com/300x200";
+  return map[source] || "https://via.placeholder.com/300x200";
 }
 
 /* =========================
-   🔹 CLEAN QUERY FOR X
+   🔹 TIME AGO (ENGLISH)
+========================= */
+function timeAgo(dateString: string) {
+  const now = new Date().getTime();
+  const past = new Date(dateString).getTime();
+
+  const diff = Math.floor((now - past) / 1000);
+
+  if (diff < 60) return `${diff} seconds ago`;
+  if (diff < 3600) return `${Math.floor(diff / 60)} minutes ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)} hours ago`;
+
+  return `${Math.floor(diff / 86400)} days ago`;
+}
+
+/* =========================
+   🔹 X SEARCH QUERY CLEANER
 ========================= */
 function getSearchQuery(title: string) {
   const priority = ["bitcoin", "ethereum", "solana", "bnb", "etf", "sec"];
@@ -44,45 +60,44 @@ function getSearchQuery(title: string) {
     .replace(/[^a-z0-9 ]/g, "")
     .split(" ");
 
-  // ambil keyword penting dulu
   const picked = words.filter((w) => priority.includes(w));
 
   if (picked.length > 0) {
     return picked.slice(0, 3).join(" ");
   }
 
-  // fallback ambil kata inti
-  return words
-    .filter((w) => w.length > 3)
-    .slice(0, 5)
-    .join(" ");
+  return words.filter((w) => w.length > 3).slice(0, 5).join(" ");
 }
 
 /* =========================
    🔹 COMPONENT
 ========================= */
 export default function NewsSection({ articles }: any) {
-  if (!articles || articles.length === 0) {
-    return <div style={{ padding: "20px" }}>Loading news...</div>;
+  if (!articles?.length) {
+    return (
+      <div style={{ padding: 20, color: "#aaa" }}>
+        Loading news...
+      </div>
+    );
   }
 
   const hero = articles[0];
-  const rest = articles.slice(1);
+  const rest = articles.slice(1, 10);
 
-  const heroImg =
-    hero.thumbnail && hero.thumbnail !== ""
-      ? hero.thumbnail
-      : getFallbackImage(hero.source);
+  const heroImg = hero.thumbnail
+    ? hero.thumbnail
+    : getFallbackImage(hero.source);
 
   return (
     <section>
+
       {/* =========================
           🔥 HERO NEWS
       ========================= */}
       <div
         style={{
-          marginBottom: "16px",
-          borderRadius: "12px",
+          marginBottom: 16,
+          borderRadius: 12,
           overflow: "hidden",
           position: "relative",
         }}
@@ -91,7 +106,7 @@ export default function NewsSection({ articles }: any) {
           src={heroImg}
           style={{
             width: "100%",
-            height: "260px",
+            height: 260,
             objectFit: "cover",
           }}
         />
@@ -100,27 +115,33 @@ export default function NewsSection({ articles }: any) {
           style={{
             position: "absolute",
             bottom: 0,
-            padding: "16px",
-            background: "linear-gradient(transparent, rgba(0,0,0,0.9))",
+            padding: 16,
             width: "100%",
+            background:
+              "linear-gradient(transparent, rgba(0,0,0,0.9))",
           }}
         >
-          {/* TAG + SOURCE */}
-          <div style={{ display: "flex", gap: "8px", marginBottom: "6px" }}>
+          {/* TAG + SOURCE + TIME */}
+          <div style={{ display: "flex", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
+            
             <span
               style={{
-                fontSize: "10px",
+                fontSize: 10,
                 background: "#f7931a20",
                 color: "#f7931a",
                 padding: "2px 6px",
-                borderRadius: "4px",
+                borderRadius: 4,
               }}
             >
               {getTag(hero.title)}
             </span>
 
-            <span style={{ fontSize: "10px", color: "#ccc" }}>
+            <span style={{ fontSize: 10, color: "#ccc" }}>
               {hero.source}
+            </span>
+
+            <span style={{ fontSize: 10, color: "#888" }}>
+              {timeAgo(hero.pubDate)}
             </span>
           </div>
 
@@ -138,44 +159,43 @@ export default function NewsSection({ articles }: any) {
             {hero.title}
           </a>
 
-          {/* 🔥 DISCUSS */}
-          <div style={{ marginTop: "8px" }}>
-            <a
-              href={`https://twitter.com/search?q=${encodeURIComponent(
-                getSearchQuery(hero.title)
-              )}&f=live`}
-              target="_blank"
-              style={{
-                fontSize: "11px",
-                color: "#1da1f2",
-                textDecoration: "none",
-              }}
-            >
-              Discuss on X →
-            </a>
-          </div>
+          {/* DISCUSS */}
+          <a
+            href={`https://twitter.com/search?q=${encodeURIComponent(
+              getSearchQuery(hero.title)
+            )}&f=live`}
+            target="_blank"
+            style={{
+              fontSize: 11,
+              color: "#1da1f2",
+              textDecoration: "none",
+              marginTop: 8,
+              display: "inline-block",
+            }}
+          >
+            Discuss on X →
+          </a>
         </div>
       </div>
 
       {/* =========================
-          📰 NEWS LIST
+          📰 LIST NEWS
       ========================= */}
       {rest.map((a: any, i: number) => {
-        const img =
-          a.thumbnail && a.thumbnail !== ""
-            ? a.thumbnail
-            : getFallbackImage(a.source);
+        const img = a.thumbnail
+          ? a.thumbnail
+          : getFallbackImage(a.source);
 
         return (
           <div
             key={i}
             style={{
               display: "flex",
-              gap: "10px",
-              marginBottom: "12px",
+              gap: 10,
+              marginBottom: 12,
               background: "#1a1a1a",
-              padding: "10px",
-              borderRadius: "10px",
+              padding: 10,
+              borderRadius: 10,
               alignItems: "center",
             }}
           >
@@ -183,38 +203,37 @@ export default function NewsSection({ articles }: any) {
             <img
               src={img}
               style={{
-                width: "80px",
-                height: "60px",
+                width: 80,
+                height: 60,
                 objectFit: "cover",
-                borderRadius: "6px",
+                borderRadius: 6,
               }}
             />
 
             {/* TEXT */}
             <div style={{ flex: 1 }}>
-              {/* TAG + SOURCE */}
-              <div
-                style={{
-                  display: "flex",
-                  gap: "6px",
-                  marginBottom: "4px",
-                  flexWrap: "wrap",
-                }}
-              >
+
+              {/* TAG + SOURCE + TIME */}
+              <div style={{ display: "flex", gap: 6, marginBottom: 4, flexWrap: "wrap" }}>
+                
                 <span
                   style={{
-                    fontSize: "10px",
+                    fontSize: 10,
                     color: "#f7931a",
                     background: "#f7931a20",
                     padding: "2px 6px",
-                    borderRadius: "4px",
+                    borderRadius: 4,
                   }}
                 >
                   {getTag(a.title)}
                 </span>
 
-                <span style={{ fontSize: "10px", color: "#888" }}>
+                <span style={{ fontSize: 10, color: "#888" }}>
                   {a.source}
+                </span>
+
+                <span style={{ fontSize: 10, color: "#666" }}>
+                  {timeAgo(a.pubDate)}
                 </span>
               </div>
 
@@ -224,15 +243,14 @@ export default function NewsSection({ articles }: any) {
                 target="_blank"
                 style={{
                   color: "#fff",
-                  fontSize: "13px",
+                  fontSize: 13,
                   textDecoration: "none",
-                  display: "block",
                 }}
               >
                 {a.title}
               </a>
 
-              {/* 🔥 DISCUSS */}
+              {/* DISCUSS */}
               <div>
                 <a
                   href={`https://twitter.com/search?q=${encodeURIComponent(
@@ -240,7 +258,7 @@ export default function NewsSection({ articles }: any) {
                   )}&f=live`}
                   target="_blank"
                   style={{
-                    fontSize: "10px",
+                    fontSize: 10,
                     color: "#1da1f2",
                     textDecoration: "none",
                   }}
@@ -248,10 +266,12 @@ export default function NewsSection({ articles }: any) {
                   Discuss →
                 </a>
               </div>
+
             </div>
           </div>
         );
       })}
+
     </section>
   );
 }

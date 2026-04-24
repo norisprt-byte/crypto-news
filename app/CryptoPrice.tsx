@@ -2,137 +2,97 @@
 
 import { useEffect, useState } from "react";
 
-type Prices = {
-  bitcoin: { price: number; change: number };
-  ethereum: { price: number; change: number };
-  solana: { price: number; change: number };
-  binancecoin: { price: number; change: number };
+type Market = {
+  bitcoin: any;
+  ethereum: any;
+  solana: any;
+  binancecoin: any;
 };
 
 export default function CryptoPrice() {
-  const [prices, setPrices] = useState<Prices | null>(null);
-  const [prevPrices, setPrevPrices] = useState<Prices | null>(null);
-  const [error, setError] = useState(false);
+  const [data, setData] = useState<Market | null>(null);
+
+  async function fetchMarket() {
+    try {
+      const res = await fetch(
+        "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=bitcoin,ethereum,solana,binancecoin&order=market_cap_desc&sparkline=false&price_change_percentage=24h"
+      );
+
+      const json = await res.json();
+
+      const mapped: any = {};
+      json.forEach((item: any) => {
+        mapped[item.id] = item;
+      });
+
+      setData(mapped);
+    } catch (err) {
+      console.error("Market fetch error:", err);
+    }
+  }
 
   useEffect(() => {
-    let isMounted = true;
-
-    async function fetchPrices() {
-      try {
-        const res = await fetch(
-          "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana,binancecoin&vs_currencies=usd&include_24hr_change=true",
-          { cache: "no-store" }
-        );
-
-        const data = await res.json();
-
-        const newPrices: Prices = {
-          bitcoin: {
-            price: data.bitcoin?.usd || 0,
-            change: data.bitcoin?.usd_24h_change || 0,
-          },
-          ethereum: {
-            price: data.ethereum?.usd || 0,
-            change: data.ethereum?.usd_24h_change || 0,
-          },
-          solana: {
-            price: data.solana?.usd || 0,
-            change: data.solana?.usd_24h_change || 0,
-          },
-          binancecoin: {
-            price: data.binancecoin?.usd || 0,
-            change: data.binancecoin?.usd_24h_change || 0,
-          },
-        };
-
-        if (isMounted) {
-          setPrevPrices((prev) => prices || prev);
-          setPrices(newPrices);
-          setError(false);
-        }
-      } catch (err) {
-        console.error("Fetch error:", err);
-        setError(true);
-      }
-    }
-
-    fetchPrices();
-    const interval = setInterval(fetchPrices, 30000);
-
-    return () => {
-      isMounted = false;
-      clearInterval(interval);
-    };
+    fetchMarket();
+    const interval = setInterval(fetchMarket, 15000);
+    return () => clearInterval(interval);
   }, []);
 
-  function format(n: number) {
-    return "$" + n.toLocaleString();
-  }
-
-  function formatPercent(n: number) {
-    return n.toFixed(2) + "%";
-  }
-
-  function getColor(change: number) {
-    if (change > 0) return "#22c55e"; // hijau
-    if (change < 0) return "#ef4444"; // merah
-    return "#aaa";
-  }
-
-  function getArrow(change: number) {
-    if (change > 0) return " 🔼";
-    if (change < 0) return " 🔽";
-    return "";
-  }
-
-  function renderItem(label: string, key: keyof Prices, icon: string) {
-    if (!prices) return null;
-
-    const item = prices[key];
+  function box(item: any, icon: string, label: string) {
+    if (!item) return null;
 
     return (
-      <div style={{ display: "flex", flexDirection: "column" }}>
-        <div style={{ display: "flex", gap: "4px" }}>
-          <span>{icon}</span>
-          <span>{label}</span>
+      <div
+        style={{
+          flex: 1,
+          minWidth: 140,
+          padding: 12,
+          borderRadius: 10,
+          background: "#0f0f0f",
+          border: "1px solid #222",
+        }}
+      >
+        <div style={{ fontSize: 12, color: "#aaa" }}>
+          {icon} {label}
+        </div>
+
+        <div style={{ fontWeight: 700, fontSize: 16, marginTop: 4 }}>
+          ${item.current_price.toLocaleString()}
         </div>
 
         <div
           style={{
-            fontWeight: 600,
-            color: "#fff",
+            fontSize: 11,
+            marginTop: 4,
+            color:
+              item.price_change_percentage_24h > 0
+                ? "#22c55e"
+                : "#ef4444",
           }}
         >
-          {format(item.price)}
+          {item.price_change_percentage_24h?.toFixed(2)}%
         </div>
 
-        <div
-          style={{
-            fontSize: "11px",
-            color: getColor(item.change),
-          }}
-        >
-          {formatPercent(item.change)}
-          {getArrow(item.change)}
+        <div style={{ fontSize: 10, color: "#666", marginTop: 4 }}>
+          Vol: ${(item.total_volume / 1e9).toFixed(2)}B
         </div>
       </div>
     );
   }
 
-  // LOADING
-  if (!prices && !error) {
+  if (!data) {
     return (
-      <div style={{ padding: "12px", background: "#1a1a1a", borderRadius: "12px" }}>
-        Loading market data...
-      </div>
-    );
-  }
-
-  // ERROR
-  if (error) {
-    return (
-      <div style={{ padding: "12px", background: "#1a1a1a", borderRadius: "12px", color: "#ef4444" }}>
-        Failed to load prices
+      <div
+        style={{
+          maxWidth: 1100,
+          margin: "20px auto",
+          padding: 12,
+          background: "#111",
+          borderRadius: 12,
+          color: "#aaa",
+          textAlign: "center",
+        }}
+      >
+        Loading real market data...
       </div>
     );
   }
@@ -140,20 +100,37 @@ export default function CryptoPrice() {
   return (
     <div
       style={{
-        padding: "12px",
-        background: "#1a1a1a",
-        borderRadius: "12px",
-        display: "flex",
-        justifyContent: "space-between",
-        flexWrap: "wrap",
-        gap: "16px",
-        fontSize: "13px",
+        maxWidth: 1100,
+        margin: "20px auto",
+        padding: "0 24px",
       }}
     >
-      {renderItem("BTC", "bitcoin", "₿")}
-      {renderItem("ETH", "ethereum", "Ξ")}
-      {renderItem("SOL", "solana", "◎")}
-      {renderItem("BNB", "binancecoin", "🟡")}
+      {/* HEADER LABEL */}
+      <div
+        style={{
+          fontSize: 11,
+          color: "#888",
+          marginBottom: 8,
+          textAlign: "center",
+        }}
+      >
+        📊 REAL MARKET TERMINAL (v4)
+      </div>
+
+      {/* GRID CENTERED */}
+      <div
+        style={{
+          display: "flex",
+          gap: 12,
+          justifyContent: "center",
+          flexWrap: "wrap",
+        }}
+      >
+        {box(data.bitcoin, "₿", "BTC")}
+        {box(data.ethereum, "Ξ", "ETH")}
+        {box(data.solana, "◎", "SOL")}
+        {box(data.binancecoin, "🟡", "BNB")}
+      </div>
     </div>
   );
 }
