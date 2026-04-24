@@ -1,19 +1,44 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
 export default function AISummary({ articles }: any) {
-  if (!articles || articles.length === 0) return null;
+  const [summary, setSummary] = useState("⏳ Loading AI...");
+  const [error, setError] = useState(false);
 
-  const titles = articles.map((a: any) => a.title.toLowerCase());
+  useEffect(() => {
+    if (!articles || articles.length === 0) return;
 
-  let score = 0;
+    async function fetchSummary() {
+      try {
+        const titles = articles.slice(0, 5).map((a: any) => a.title);
 
-  titles.forEach((t: string) => {
-    if (t.includes("rise") || t.includes("gain")) score++;
-    if (t.includes("fall") || t.includes("risk")) score--;
-  });
+        const res = await fetch("/api/summary", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ titles }),
+        });
 
-  const sentiment =
-    score > 1 ? "Bullish" : score < -1 ? "Bearish" : "Neutral";
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error);
+        }
+
+        console.log("AI RESPONSE:", data);
+
+        setSummary(data.summary);
+      } catch (err) {
+        console.error(err);
+        setError(true);
+        setSummary("❌ AI NOT ACTIVE");
+      }
+    }
+
+    fetchSummary();
+  }, [articles]);
 
   return (
     <div
@@ -24,11 +49,18 @@ export default function AISummary({ articles }: any) {
       }}
     >
       <div style={{ fontSize: "11px", color: "#888" }}>
-        AI SUMMARY
+        🧠 AI MARKET SUMMARY
       </div>
 
-      <div style={{ fontSize: "13px", marginTop: "6px" }}>
-        Market sentiment is <b>{sentiment}</b> based on latest news.
+      <div
+        style={{
+          fontSize: "13px",
+          marginTop: "6px",
+          lineHeight: 1.6,
+          color: error ? "#f87171" : "#fff",
+        }}
+      >
+        {summary}
       </div>
     </div>
   );
