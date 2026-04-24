@@ -114,7 +114,7 @@ export default function CryptoPrice() {
           textAlign: "center",
         }}
       >
-        📊 REAL MARKET TERMINAL (v4)
+       
       </div>
 
       {/* GRID CENTERED */}
